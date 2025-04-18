@@ -126,8 +126,8 @@ const MainLayout = () => {
           }}
         >
           <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/users" element={<UserManagement />} />
+            <Route path="/dashboard" element={<Dashboard />} /> 
+            <Route path="/users" element={<UserManagement />} /> 
             <Route path="/books" element={<BookManagement />} />
             <Route path="/purchase" element={<PurchaseManagement />} />
             <Route path="/sales" element={<SalesManagement />} />

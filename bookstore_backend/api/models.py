@@ -9,11 +9,11 @@ class User(AbstractUser):
         ('admin', 'Regular Admin'),
     )
     
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='admin')
-    employee_id = models.CharField(max_length=50, unique=True)
-    phone = models.CharField(max_length=20, blank=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='admin') # 角色：超级管理员/普通管理员
+    employee_id = models.CharField(max_length=50, unique=True)  # 管理员id
+    phone = models.CharField(max_length=20, blank=True) # 年龄
     age = models.IntegerField(null=True, blank=True)
-    gender = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')], blank=True)
+    gender = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')], blank=True) # 性别
 
     def save(self, *args, **kwargs):
         if self.password and not self.password.startswith('md5$'):
@@ -27,12 +27,12 @@ class Book(models.Model):
     author = models.CharField(max_length=200)
     publisher = models.CharField(max_length=200)
     retail_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    current_stock = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    current_stock = models.IntegerField(default=0, validators=[MinValueValidator(0)]) # 库存量
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.title} ({self.isbn})"
+        return f"{self.title} ({self.isbn})" # 方便打印书籍信息
 
 class PurchaseOrder(models.Model):
     STATUS_CHOICES = (
