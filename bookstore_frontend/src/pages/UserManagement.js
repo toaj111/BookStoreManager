@@ -1,258 +1,236 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, message, Space, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { userService } from '../services/userService';
-
-const { Option } = Select;
+import { Table, Button, Modal, Form, Input, Select, message, Space, Popconfirm } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import axios from 'axios';
+import { API_BASE_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [form] = Form.useForm();
-  const [editingUser, setEditingUser] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [form] = Form.useForm();
+    const [editingUser, setEditingUser] = useState(null);
+    const { user: currentUser } = useAuth();
 
-  const columns = [
-    {
-      title: '用户名',
-      dataIndex: 'username',
-      key: 'username',
-    },
-    {
-      title: '姓名',
-      key: 'name',
-      render: (_, record) => `${record.first_name} ${record.last_name}`,
-    },
-    {
-      title: '邮箱',
-      dataIndex: 'email',
-      key: 'email',
-    },
-    {
-      title: '角色',
-      dataIndex: 'role',
-      key: 'role',
-      render: (role) => {
-        const color = role === 'admin' ? 'red' : role === 'manager' ? 'blue' : 'green';
-        return <Tag color={color}>{role}</Tag>;
-      },
-    },
-    {
-      title: '状态',
-      dataIndex: 'is_active',
-      key: 'is_active',
-      render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? '活跃' : '禁用'}
-        </Tag>
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
-          <Button
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record)}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
-    },
-  ];
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await userService.getAllUsers();
-      setUsers(response.data);
-    } catch (error) {
-      message.error('获取用户列表失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdd = () => {
-    setEditingUser(null);
-    form.resetFields();
-    setModalVisible(true);
-  };
-
-  const handleEdit = (user) => {
-    setEditingUser(user);
-    form.setFieldsValue({
-      ...user,
-      confirm_password: user.password,
-    });
-    setModalVisible(true);
-  };
-
-  const handleDelete = async (user) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除用户 ${user.username} 吗？`,
-      onOk: async () => {
+    const fetchUsers = async () => {
+        setLoading(true);
         try {
-          await userService.deleteUser(user.id);
-          message.success('删除成功');
-          fetchUsers();
+            const response = await axios.get(`${API_BASE_URL}/accounts/users/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            setUsers(response.data);
         } catch (error) {
-          message.error('删除失败');
+            message.error('获取用户列表失败');
+            console.error('Error fetching users:', error);
         }
-      },
-    });
-  };
+        setLoading(false);
+    };
 
-  const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields();
-      if (editingUser) {
-        await userService.updateUser(editingUser.id, values);
-        message.success('更新成功');
-      } else {
-        await userService.createUser(values);
-        message.success('创建成功');
-      }
-      setModalVisible(false);
-      fetchUsers();
-    } catch (error) {
-      message.error(error.response?.data?.message || '操作失败');
-    }
-  };
+    useEffect(() => {
+        fetchUsers();
+    }, []);
 
-  return (
-    <div>
-      <div style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          添加用户
-        </Button>
-      </div>
+    const handleAdd = () => {
+        setEditingUser(null);
+        form.resetFields();
+        setModalVisible(true);
+    };
 
-      <Table
-        columns={columns}
-        dataSource={users}
-        rowKey="id"
-        loading={loading}
-      />
+    const handleEdit = (record) => {
+        setEditingUser(record);
+        form.setFieldsValue({
+            username: record.username,
+            email: record.email,
+            is_staff: record.is_staff,
+            is_superuser: record.is_superuser
+        });
+        setModalVisible(true);
+    };
 
-      <Modal
-        title={editingUser ? '编辑用户' : '添加用户'}
-        open={modalVisible}
-        onOk={handleModalOk}
-        onCancel={() => setModalVisible(false)}
-        width={600}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-        >
-          <Form.Item
-            name="username"
-            label="用户名"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          >
-            <Input />
-          </Form.Item>
+    const handleDelete = async (id) => {
+        try {
+            await axios.delete(`${API_BASE_URL}/accounts/users/${id}/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            message.success('删除用户成功');
+            fetchUsers();
+        } catch (error) {
+            message.error('删除用户失败');
+            console.error('Error deleting user:', error);
+        }
+    };
 
-          <Form.Item
-            name="password"
-            label="密码"
-            rules={[
-              { required: !editingUser, message: '请输入密码' },
-              { min: 8, message: '密码至少8位' },
-              { pattern: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/, message: '密码必须包含字母和数字' }
-            ]}
-          >
-            <Input.Password placeholder="请输入至少8位包含字母和数字的密码" />
-          </Form.Item>
+    const handleSubmit = async () => {
+        try {
+            const values = await form.validateFields();
+            if (editingUser) {
+                await axios.put(`${API_BASE_URL}/accounts/users/${editingUser.id}/`, values, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                message.success('更新用户成功');
+            } else {
+                await axios.post(`${API_BASE_URL}/accounts/users/`, values, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                message.success('创建用户成功');
+            }
+            setModalVisible(false);
+            fetchUsers();
+        } catch (error) {
+            message.error(editingUser ? '更新用户失败' : '创建用户失败');
+            console.error('Error submitting user:', error);
+        }
+    };
 
-          <Form.Item
-            name="confirm_password"
-            label="确认密码"
-            dependencies={['password']}
-            rules={[
-              { required: !editingUser, message: '请确认密码' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('两次输入的密码不一致'));
-                },
-              }),
-            ]}
-          >
-            <Input.Password />
-          </Form.Item>
+    const columns = [
+        {
+            title: '用户名',
+            dataIndex: 'username',
+            key: 'username',
+        },
+        {
+            title: '邮箱',
+            dataIndex: 'email',
+            key: 'email',
+        },
+        {
+            title: '管理员',
+            dataIndex: 'is_staff',
+            key: 'is_staff',
+            render: (isStaff) => isStaff ? '是' : '否'
+        },
+        {
+            title: '超级管理员',
+            dataIndex: 'is_superuser',
+            key: 'is_superuser',
+            render: (isSuperuser) => isSuperuser ? '是' : '否'
+        },
+        {
+            title: '操作',
+            key: 'action',
+            render: (_, record) => (
+                <Space>
+                    <Button
+                        type="primary"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEdit(record)}
+                        disabled={record.id === currentUser?.id}
+                    >
+                        编辑
+                    </Button>
+                    <Popconfirm
+                        title="确定要删除这个用户吗？"
+                        onConfirm={() => handleDelete(record.id)}
+                        okText="确定"
+                        cancelText="取消"
+                        disabled={record.id === currentUser?.id}
+                    >
+                        <Button
+                            danger
+                            icon={<DeleteOutlined />}
+                            disabled={record.id === currentUser?.id}
+                        >
+                            删除
+                        </Button>
+                    </Popconfirm>
+                </Space>
+            ),
+        },
+    ];
 
-          <Form.Item
-            name="email"
-            label="邮箱"
-            rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '请输入有效的邮箱地址' }
-            ]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="first_name"
-            label="名字"
-            rules={[{ required: true, message: '请输入名字' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="last_name"
-            label="姓氏"
-            rules={[{ required: true, message: '请输入姓氏' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="role"
-            label="角色"
-            rules={[{ required: true, message: '请选择角色' }]}
-          >
-            <Select>
-              <Option value="admin">管理员</Option>
-              <Option value="manager">经理</Option>
-              <Option value="staff">员工</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="is_active"
-            label="状态"
-            valuePropName="checked"
-          >
-            <Select>
-              <Option value={true}>活跃</Option>
-              <Option value={false}>禁用</Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
-  );
+    return (
+        <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+                <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={handleAdd}
+                >
+                    添加用户
+                </Button>
+            </div>
+            <Table
+                columns={columns}
+                dataSource={users}
+                rowKey="id"
+                loading={loading}
+            />
+            <Modal
+                title={editingUser ? '编辑用户' : '添加用户'}
+                open={modalVisible}
+                onOk={handleSubmit}
+                onCancel={() => setModalVisible(false)}
+                destroyOnClose
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                >
+                    <Form.Item
+                        name="username"
+                        label="用户名"
+                        rules={[
+                            { required: true, message: '请输入用户名' },
+                            { min: 3, message: '用户名至少3个字符' }
+                        ]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="email"
+                        label="邮箱"
+                        rules={[
+                            { required: true, message: '请输入邮箱' },
+                            { type: 'email', message: '请输入有效的邮箱地址' }
+                        ]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    {!editingUser && (
+                        <Form.Item
+                            name="password"
+                            label="密码"
+                            rules={[
+                                { required: true, message: '请输入密码' },
+                                { min: 6, message: '密码至少6个字符' }
+                            ]}
+                        >
+                            <Input.Password />
+                        </Form.Item>
+                    )}
+                    <Form.Item
+                        name="is_staff"
+                        label="管理员权限"
+                        valuePropName="checked"
+                    >
+                        <Select>
+                            <Select.Option value={true}>是</Select.Option>
+                            <Select.Option value={false}>否</Select.Option>
+                        </Select>
+                    </Form.Item>
+                    <Form.Item
+                        name="is_superuser"
+                        label="超级管理员权限"
+                        valuePropName="checked"
+                    >
+                        <Select>
+                            <Select.Option value={true}>是</Select.Option>
+                            <Select.Option value={false}>否</Select.Option>
+                        </Select>
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </div>
+    );
 };
 
 export default UserManagement; 

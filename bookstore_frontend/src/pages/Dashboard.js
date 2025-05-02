@@ -1,17 +1,16 @@
 import React from 'react';
-import { Row, Col, Card, Statistic } from 'antd';
+import { Card, Row, Col, Statistic } from 'antd';
 import { BookOutlined, ShoppingCartOutlined, DollarOutlined, UserOutlined } from '@ant-design/icons';
 
 const Dashboard = () => {
   return (
-    <div>
-      <h2>系统概览</h2>
-      <Row gutter={16}>
+    <div style={{ padding: '24px' }}>
+      <Row gutter={[16, 16]}>
         <Col span={6}>
           <Card>
             <Statistic
-              title="图书总数"
-              value={123}
+              title="总图书数"
+              value={0}
               prefix={<BookOutlined />}
             />
           </Card>
@@ -19,18 +18,8 @@ const Dashboard = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="今日销售额"
-              value={2802}
-              prefix={<DollarOutlined />}
-              suffix="元"
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="待处理订单"
-              value={14}
+              title="总订单数"
+              value={0}
               prefix={<ShoppingCartOutlined />}
             />
           </Card>
@@ -38,8 +27,19 @@ const Dashboard = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="用户数量"
-              value={25}
+              title="总销售额"
+              value={0}
+              prefix={<DollarOutlined />}
+              precision={2}
+              suffix="元"
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="总用户数"
+              value={0}
               prefix={<UserOutlined />}
             />
           </Card>

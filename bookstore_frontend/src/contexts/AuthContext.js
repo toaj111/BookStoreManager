@@ -4,32 +4,40 @@ import { API_BASE_URL } from '../config';
 
 const AuthContext = createContext(null);
 
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
+
 export const AuthProvider = ({ children }) => {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
-            fetchUser();
+            checkAuthStatus();
         } else {
             setLoading(false);
         }
     }, []);
 
-    const fetchUser = async () => {
+    const checkAuthStatus = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/accounts/users/me/`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
-            console.log('User data:', response.data);
             setUser(response.data);
+            setIsAuthenticated(true);
         } catch (error) {
-            console.error('Error fetching user:', error);
-            localStorage.removeItem('token');
-            setUser(null);
+            console.error('Auth check failed:', error);
+            logout();
         } finally {
             setLoading(false);
         }
@@ -41,33 +49,29 @@ export const AuthProvider = ({ children }) => {
                 username,
                 password
             });
-            console.log('Login response:', response.data);
-            if (response.data.access) {
-                localStorage.setItem('token', response.data.access);
-                await fetchUser();
-                return true;
-            }
-            return false;
+            const { access } = response.data;
+            localStorage.setItem('token', access);
+            await checkAuthStatus();
+            return true;
         } catch (error) {
-            console.error('Login error:', error);
-            return false;
+            console.error('Login failed:', error);
+            throw error;
         }
     };
 
     const logout = () => {
         localStorage.removeItem('token');
+        setIsAuthenticated(false);
         setUser(null);
     };
 
     const hasPermission = (permission) => {
         if (!user) return false;
-        console.log('User permissions:', user);
         if (user.is_superuser || user.is_staff) return true;
         return user.permissions?.includes(permission) || false;
     };
 
     const isAdmin = () => {
-        console.log('Checking admin status:', user);
         return user?.is_superuser || user?.is_staff || false;
     };
 
@@ -75,8 +79,16 @@ export const AuthProvider = ({ children }) => {
         return user?.is_staff || false;
     };
 
-    const isAuthenticated = () => {
-        return !!user;
+    const value = {
+        isAuthenticated,
+        user,
+        loading,
+        login,
+        logout,
+        checkAuthStatus,
+        hasPermission,
+        isAdmin,
+        isStaff
     };
 
     if (loading) {
@@ -84,24 +96,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ 
-            user, 
-            login, 
-            logout, 
-            hasPermission,
-            isAdmin,
-            isStaff,
-            isAuthenticated: isAuthenticated()
-        }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
 }; 

@@ -9,6 +9,7 @@ import {
   ShoppingOutlined,
   AccountBookOutlined,
   LogoutOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -23,6 +24,16 @@ const Sidebar = () => {
       key: '/books',
       icon: <BookOutlined />,
       label: '图书管理',
+    },
+    {
+      key: '/categories',
+      icon: <TagsOutlined />,
+      label: '分类管理',
+    },
+    {
+      key: '/purchase-orders',
+      icon: <ShoppingCartOutlined />,
+      label: '进货管理',
     },
     ...(isAdmin() ? [{
       key: '/users',

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -8,67 +8,64 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  useEffect(() => {
-    // 如果已经登录，直接跳转到首页
-    const token = localStorage.getItem('token');
-    if (token) {
-      navigate('/');
-    }
-  }, [navigate]);
-
   const onFinish = async (values) => {
     try {
-      const success = await login(values.username, values.password);
-      if (success) {
-        message.success('登录成功！');
-        navigate('/');
-      } else {
-        message.error('登录失败：用户名或密码错误');
-      }
+      await login(values.username, values.password);
+      message.success('登录成功');
+      navigate('/');
     } catch (error) {
-      message.error('登录失败：' + (error.response?.data?.message || error.message));
+      if (error.response?.data) {
+        message.error(Object.values(error.response.data).join('\n'));
+      } else {
+        message.error('登录失败，请检查用户名和密码');
+      }
     }
   };
 
   return (
-    <div style={{
-      height: '100vh',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '100vh',
       background: '#f0f2f5'
     }}>
-      <Card title="图书销售管理系统" style={{ width: 400 }}>
+      <Card style={{ width: 400 }}>
+        <h2 style={{ textAlign: 'center', marginBottom: 24 }}>登录</h2>
         <Form
           name="login"
-          initialValues={{ remember: true }}
           onFinish={onFinish}
+          autoComplete="off"
         >
           <Form.Item
             name="username"
-            rules={[{ required: true, message: '请输入用户名！' }]}
+            rules={[
+              { required: true, message: '请输入用户名' },
+              { min: 3, message: '用户名至少3个字符' }
+            ]}
           >
-            <Input 
-              prefix={<UserOutlined />} 
-              placeholder="用户名" 
-              size="large"
-            />
+            <Input prefix={<UserOutlined />} placeholder="用户名" />
           </Form.Item>
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: '请输入密码！' }]}
+            rules={[
+              { required: true, message: '请输入密码' },
+              { min: 6, message: '密码至少6个字符' }
+            ]}
           >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="密码"
-              size="large"
-            />
+            <Input.Password prefix={<LockOutlined />} placeholder="密码" />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" style={{ width: '100%' }} size="large">
+            <Button type="primary" htmlType="submit" style={{ width: '100%' }}>
               登录
+            </Button>
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="link" onClick={() => navigate('/register')} style={{ width: '100%' }}>
+              没有账号？去注册
             </Button>
           </Form.Item>
         </Form>

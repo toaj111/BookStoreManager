@@ -1,208 +1,189 @@
-import React, { useState } from 'react';
-import { Table, Button, Space, Input, Modal, Form, InputNumber, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import {
+  Table,
+  Input,
+  Button,
+  Space,
+  Tag,
+  Select,
+  Card,
+  Typography,
+  Tooltip,
+} from 'antd';
+import { SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import axios from 'axios';
 
-const { Search } = Input;
+const { Title } = Typography;
+const { Option } = Select;
 
 const BookManagement = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [form] = Form.useForm();
-  const [editingBook, setEditingBook] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
-  // 表格列定义
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchBooks();
+  }, [searchText, categoryFilter, statusFilter]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get('/api/books/categories/');
+      setCategories(response.data.results);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchBooks = async (page = 1, pageSize = 10) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page,
+        page_size: pageSize,
+      });
+      if (searchText) params.append('search', searchText);
+      if (categoryFilter) params.append('category', categoryFilter);
+      if (statusFilter) params.append('status', statusFilter);
+
+      const response = await axios.get(`/api/books/books/?${params}`);
+      setBooks(response.data.results);
+      setPagination({
+        current: page,
+        pageSize: pageSize,
+        total: response.data.count,
+      });
+    } catch (error) {
+      console.error('Error fetching books:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTableChange = (pagination) => {
+    fetchBooks(pagination.current, pagination.pageSize);
+  };
+
+  const getStatusTag = (status) => {
+    const statusMap = {
+      in_stock: { color: 'green', text: '在库' },
+      out_of_stock: { color: 'red', text: '缺货' },
+      discontinued: { color: 'gray', text: '停售' },
+    };
+    const statusInfo = statusMap[status] || { color: 'default', text: status };
+    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+  };
+
   const columns = [
     {
-      title: 'ISBN',
-      dataIndex: 'isbn',
-      key: 'isbn',
-    },
-    {
-      title: '书名',
+      title: '图书信息',
       dataIndex: 'title',
       key: 'title',
+      render: (_, record) => (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{record.title}</div>
+          <div style={{ color: '#666' }}>
+            {record.author} | {record.publisher}
+          </div>
+          <div style={{ color: '#999' }}>ISBN: {record.isbn}</div>
+        </div>
+      ),
     },
     {
-      title: '作者',
-      dataIndex: 'author',
-      key: 'author',
+      title: '分类',
+      dataIndex: 'category_name',
+      key: 'category_name',
     },
     {
-      title: '出版社',
-      dataIndex: 'publisher',
-      key: 'publisher',
-    },
-    {
-      title: '零售价',
-      dataIndex: 'retail_price',
-      key: 'retail_price',
+      title: '价格',
+      dataIndex: 'price',
+      key: 'price',
       render: (price) => `¥${price.toFixed(2)}`,
     },
     {
       title: '库存',
-      dataIndex: 'current_stock',
-      key: 'current_stock',
+      dataIndex: 'stock',
+      key: 'stock',
     },
     {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button 
-            type="primary" 
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
-          <Button 
-            type="primary" 
-            danger 
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record)}
-          >
-            删除
-          </Button>
-        </Space>
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => getStatusTag(status),
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text) => (
+        text ? (
+          <Tooltip title={text}>
+            <InfoCircleOutlined style={{ cursor: 'pointer' }} />
+          </Tooltip>
+        ) : '-'
       ),
     },
   ];
 
-  // 处理搜索
-  const handleSearch = (value) => {
-    console.log('搜索:', value);
-    // TODO: 实现搜索功能
-  };
-
-  // 处理添加/编辑
-  const handleAddEdit = () => {
-    form.validateFields()
-      .then(values => {
-        console.log('表单数据:', values);
-        // TODO: 实现添加/编辑功能
-        form.resetFields();
-        setIsModalVisible(false);
-      })
-      .catch(info => {
-        console.log('验证失败:', info);
-      });
-  };
-
-  // 处理编辑
-  const handleEdit = (record) => {
-    setEditingBook(record);
-    form.setFieldsValue(record);
-    setIsModalVisible(true);
-  };
-
-  // 处理删除
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除《${record.title}》吗？`,
-      onOk() {
-        // TODO: 实现删除功能
-        message.success('删除成功');
-      },
-    });
-  };
-
   return (
-    <div>
-      <div style={{ marginBottom: 16 }}>
-        <Space>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingBook(null);
-              form.resetFields();
-              setIsModalVisible(true);
-            }}
-          >
-            添加图书
-          </Button>
-          <Search
-            placeholder="输入书名或ISBN搜索"
-            onSearch={handleSearch}
+    <div style={{ padding: '24px' }}>
+      <Card>
+        <Title level={4}>图书管理</Title>
+
+        <div style={{ marginBottom: '16px', display: 'flex', gap: '16px' }}>
+          <Input
+            placeholder="搜索图书标题、作者、出版社或ISBN"
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 300 }}
           />
-        </Space>
-      </div>
-
-      <Table
-        columns={columns}
-        dataSource={books}
-        rowKey="isbn"
-        loading={loading}
-      />
-
-      <Modal
-        title={editingBook ? "编辑图书" : "添加图书"}
-        open={isModalVisible}
-        onOk={handleAddEdit}
-        onCancel={() => setIsModalVisible(false)}
-        destroyOnClose
-      >
-        <Form
-          form={form}
-          layout="vertical"
-        >
-          <Form.Item
-            name="isbn"
-            label="ISBN"
-            rules={[{ required: true, message: '请输入ISBN' }]}
+          <Select
+            placeholder="选择分类"
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            style={{ width: 150 }}
+            allowClear
           >
-            <Input disabled={!!editingBook} />
-          </Form.Item>
-
-          <Form.Item
-            name="title"
-            label="书名"
-            rules={[{ required: true, message: '请输入书名' }]}
+            {categories.map((category) => (
+              <Option key={category.id} value={category.id}>
+                {category.name}
+              </Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="选择状态"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 120 }}
+            allowClear
           >
-            <Input />
-          </Form.Item>
+            <Option value="in_stock">在库</Option>
+            <Option value="out_of_stock">缺货</Option>
+            <Option value="discontinued">停售</Option>
+          </Select>
+        </div>
 
-          <Form.Item
-            name="author"
-            label="作者"
-            rules={[{ required: true, message: '请输入作者' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="publisher"
-            label="出版社"
-            rules={[{ required: true, message: '请输入出版社' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="retail_price"
-            label="零售价"
-            rules={[{ required: true, message: '请输入零售价' }]}
-          >
-            <InputNumber
-              min={0}
-              step={0.01}
-              prefix="¥"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="current_stock"
-            label="库存"
-            rules={[{ required: true, message: '请输入库存数量' }]}
-          >
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-        </Form>
-      </Modal>
+        <Table
+          columns={columns}
+          dataSource={books}
+          rowKey="id"
+          pagination={pagination}
+          loading={loading}
+          onChange={handleTableChange}
+        />
+      </Card>
     </div>
   );
 };
