@@ -1,37 +1,80 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { Layout } from 'antd';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import MainLayout from './components/Layout';
+import BookList from './components/BookList';
+import SaleList from './components/SaleList';
+import PurchaseList from './components/PurchaseList';
+import FinancialList from './components/FinancialList';
+import Login from './components/Login';
+import { authService } from './services/authService';
 
-// 导入页面组件
-import Login from './pages/Login';
-import MainLayout from './components/Layout/MainLayout';
-import NotFound from './pages/NotFound';
-
-// 私有路由组件
-const PrivateRoute = ({ element }) => {
-  const isAuthenticated = localStorage.getItem('token');
-  return isAuthenticated ? element : <Navigate to="/login" replace />;
+const PrivateRoute = ({ children }) => {
+    const isAuthenticated = authService.isAuthenticated();
+    return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
-function App() {
+const App = () => {
   return (
-    <Router>
-      <Routes>
-        {/* 登录页面 */}
-        <Route path="/login" element={<Login />} />
-        
-        {/* 主布局下的路由 */}
-        <Route path="/*" element={<PrivateRoute element={<MainLayout />} />} />
-        
-        {/* 404页面 */}
-        <Route path="/404" element={<NotFound />} />
-        
-        {/* 重定向到主页 */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </Router>
+        <ConfigProvider locale={zhCN}>
+            <Router>
+                <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route
+                        path="/"
+                        element={
+                            <PrivateRoute>
+                                <MainLayout>
+                                    <Navigate to="/books" replace />
+                                </MainLayout>
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/books"
+                        element={
+                            <PrivateRoute>
+                                <MainLayout>
+                                    <BookList />
+                                </MainLayout>
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/sales"
+                        element={
+                            <PrivateRoute>
+                                <MainLayout>
+                                    <SaleList />
+                                </MainLayout>
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/purchases"
+                        element={
+                            <PrivateRoute>
+                                <MainLayout>
+                                    <PurchaseList />
+                                </MainLayout>
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/financial"
+                        element={
+                            <PrivateRoute>
+                                <MainLayout>
+                                    <FinancialList />
+                                </MainLayout>
+                            </PrivateRoute>
+                        }
+                    />
+                </Routes>
+            </Router>
+        </ConfigProvider>
   );
-}
+};
 
 export default App;

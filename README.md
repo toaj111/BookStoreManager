@@ -84,9 +84,9 @@ exit()
 ```
 
 ### 5. 配置前端
-```bash
+    ```bash
 # 安装Node.js (如果还没安装)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
 source ~/.bashrc  # 或 ~/.zshrc
 nvm install node  # 安装最新版Node.js
 
@@ -105,7 +105,7 @@ python manage.py runserver
 后端服务器将在 http://localhost:8000 运行
 
 ### 启动前端开发服务器
-```bash
+    ```bash
 cd bookstore_frontend
 npm start
 ```
