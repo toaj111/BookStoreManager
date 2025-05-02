@@ -36,4 +36,15 @@ class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.user.is_staff:
             return True
-        return obj == request.user 
+        return obj == request.user
+
+class IsStaffOrManagerOrAdmin(permissions.BasePermission):
+    """
+    允许管理员、经理和员工访问
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            (request.user.is_staff or request.user.is_superuser or request.user.role in ['manager', 'staff'])
+        ) 

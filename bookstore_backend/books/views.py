@@ -10,58 +10,58 @@ from .serializers import (
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdminOrReadOnly
 from django.db import models
+from django.db.models import Q
+from accounts.permissions import IsStaffOrManagerOrAdmin
+from decimal import Decimal
 
 # Create your views here.
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsStaffOrManagerOrAdmin]
+
+    def get_queryset(self):
+        return Category.objects.all().order_by('name')
 
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStaffOrManagerOrAdmin]
 
     def get_queryset(self):
         queryset = Book.objects.all()
         category = self.request.query_params.get('category', None)
-        status = self.request.query_params.get('status', None)
         search = self.request.query_params.get('search', None)
+        status = self.request.query_params.get('status', None)
 
         if category:
-            queryset = queryset.filter(category_id=category)
+            queryset = queryset.filter(category=category)
         if status:
             queryset = queryset.filter(status=status)
         if search:
             queryset = queryset.filter(
-                models.Q(title__icontains=search) |
-                models.Q(author__icontains=search) |
-                models.Q(publisher__icontains=search) |
-                models.Q(isbn__icontains=search)
+                Q(title__icontains=search) |
+                Q(author__icontains=search) |
+                Q(publisher__icontains=search) |
+                Q(isbn__icontains=search)
             )
-        return queryset
+        return queryset.order_by('title')
 
     @action(detail=True, methods=['post'])
     def update_stock(self, request, pk=None):
         book = self.get_object()
-        quantity = request.data.get('quantity', 0)
+        stock_change = request.data.get('stock_change', 0)
         
         try:
-            quantity = int(quantity)
+            stock_change = int(stock_change)
         except (TypeError, ValueError):
             return Response(
-                {'error': '数量必须是整数'},
+                {'error': '库存变化必须是整数'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if quantity == 0:
-            return Response(
-                {'error': '数量不能为0'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        new_stock = book.stock + quantity
+        new_stock = book.stock + stock_change
         if new_stock < 0:
             return Response(
                 {'error': '库存不能为负数'},
@@ -69,36 +69,32 @@ class BookViewSet(viewsets.ModelViewSet):
             )
 
         book.stock = new_stock
-        if new_stock == 0:
-            book.status = 'out_of_stock'
-        else:
+        # 根据库存更新状态
+        if new_stock > 0:
             book.status = 'in_stock'
+        else:
+            book.status = 'out_of_stock'
         book.save()
-
-        return Response({
-            'message': '库存更新成功',
-            'new_stock': book.stock,
-            'status': book.status
-        })
+        
+        serializer = self.get_serializer(book)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
-    def change_status(self, request, pk=None):
+    def update_status(self, request, pk=None):
         book = self.get_object()
         new_status = request.data.get('status')
-
+        
         if new_status not in dict(Book.STATUS_CHOICES):
             return Response(
-                {'error': '无效的状态'},
+                {'error': '无效的状态值'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         book.status = new_status
         book.save()
-
-        return Response({
-            'message': '状态更新成功',
-            'status': book.status
-        })
+        
+        serializer = self.get_serializer(book)
+        return Response(serializer.data)
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all()
@@ -165,6 +161,42 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             'status': order.status
         })
 
+    @action(detail=True, methods=['post'])
+    def shelve(self, request, pk=None):
+        order = self.get_object()
+        if order.status != 'paid':
+            return Response(
+                {'error': '只有已付款的订单才能上架'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        retail_price = request.data.get('retail_price')
+        try:
+            retail_price = Decimal(retail_price)
+            if retail_price <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return Response(
+                {'error': '零售价格必须为正数'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        book = order.book
+        book.stock += order.quantity
+        book.price = retail_price
+        book.status = 'in_stock'
+        book.save()
+
+        # 标记订单为已上架
+        order.status = 'shelved'
+        order.save()
+
+        return Response({
+            'message': '上架成功',
+            'book': BookSerializer(book).data,
+            'order_status': order.status
+        })
+
     @action(detail=False, methods=['post'])
     def create_with_new_book(self, request):
         serializer = NewBookPurchaseOrderSerializer(data=request.data)
@@ -179,7 +211,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             'publisher': serializer.validated_data['publisher'],
             'category': serializer.validated_data['category'],
             'description': serializer.validated_data.get('description', ''),
-            'price': serializer.validated_data['purchase_price'] * 1.3,  # 设置销售价格为进货价格的1.3倍
+            'price': serializer.validated_data['purchase_price'] * Decimal('1.3'),  # 设置销售价格为进货价格的1.3倍
             'stock': 0,
             'status': 'out_of_stock'
         }

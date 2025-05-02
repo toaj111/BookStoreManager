@@ -21,18 +21,20 @@ class BookSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def validate_isbn(self, value):
-        if not value.isdigit() or len(value) != 13:
-            raise serializers.ValidationError("ISBN必须是13位数字")
+        # 移除所有非数字字符
+        isbn = ''.join(filter(str.isdigit, value))
+        if len(isbn) != 13:
+            raise serializers.ValidationError('ISBN必须是13位数字')
+        return isbn
+
+    def validate_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('价格必须大于0')
         return value
 
     def validate_stock(self, value):
         if value < 0:
-            raise serializers.ValidationError("库存不能为负数")
-        return value
-
-    def validate_price(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("价格必须大于0")
+            raise serializers.ValidationError('库存不能为负数')
         return value
 
 class PurchaseOrderSerializer(serializers.ModelSerializer):
