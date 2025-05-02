@@ -1,18 +1,73 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.core.validators import MinValueValidator
 import hashlib
 import uuid
+from django.utils.translation import gettext_lazy as _
 
 class User(AbstractUser):
-    employee_id = models.CharField(max_length=20, unique=True)
-    role = models.CharField(max_length=20, choices=[
-        ('super_admin', '超级管理员'),
+    ROLE_CHOICES = [
         ('admin', '管理员'),
-    ])
-    phone = models.CharField(max_length=20, blank=True) # 电话
-    age = models.IntegerField(null=True, blank=True)
-    gender = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')], blank=True) # 性别
+        ('manager', '经理'),
+        ('staff', '普通员工'),
+    ]
+    
+    GENDER_CHOICES = [
+        ('M', '男'),
+        ('F', '女'),
+        ('O', '其他'),
+    ]
+    
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='staff', verbose_name='角色')
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='O', verbose_name='性别')
+    phone = models.CharField(max_length=20, blank=True, verbose_name='电话')
+    hire_date = models.DateField(null=True, blank=True, verbose_name='入职日期')
+    
+    class Meta:
+        verbose_name = '用户'
+        verbose_name_plural = '用户'
+        permissions = [
+            ('view_all_books', '可以查看所有图书'),
+            ('manage_books', '可以管理图书'),
+            ('view_all_sales', '可以查看所有销售记录'),
+            ('manage_sales', '可以管理销售'),
+            ('view_all_purchases', '可以查看所有采购记录'),
+            ('manage_purchases', '可以管理采购'),
+            ('view_all_financials', '可以查看所有财务记录'),
+            ('manage_financials', '可以管理财务'),
+            ('manage_users', '可以管理用户'),
+        ]
+    
+    def __str__(self):
+        return f"{self.username} ({self.get_role_display()})"
+    
+    def has_permission(self, permission_codename):
+        if self.is_superuser:
+            return True
+        return self.user_permissions.filter(codename=permission_codename).exists() or \
+               self.groups.filter(permissions__codename=permission_codename).exists()
+    
+    def get_role_permissions(self):
+        if self.role == 'admin':
+            return Permission.objects.all()
+        elif self.role == 'manager':
+            return Permission.objects.filter(
+                codename__in=[
+                    'view_all_books', 'manage_books',
+                    'view_all_sales', 'manage_sales',
+                    'view_all_purchases', 'manage_purchases',
+                    'view_all_financials', 'manage_financials',
+                ]
+            )
+        else:  # staff
+            return Permission.objects.filter(
+                codename__in=[
+                    'view_all_books',
+                    'view_all_sales',
+                    'view_all_purchases',
+                    'view_all_financials',
+                ]
+            )
 
     def set_password(self, raw_password):
         if raw_password:

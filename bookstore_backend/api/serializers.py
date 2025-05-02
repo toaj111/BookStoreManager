@@ -1,26 +1,52 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import Permission
 from .models import User, Book, PurchaseOrder, Sale, FinancialTransaction
 
 # 序列化器：将数据库中的数据转换为JSON格式
 # 反序列化器：将JSON格式转换为数据库中的数据
 
 # User实例与json数据的转化
+class PermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Permission
+        fields = ['codename', 'name']
+
 class UserSerializer(serializers.ModelSerializer):
+    permissions = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'employee_id', 'role']
-        read_only_fields = ['id']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'role', 'gender', 'phone', 'hire_date',
+            'is_active', 'is_staff', 'permissions'
+        ]
+        read_only_fields = ['id', 'permissions']
+    
+    def get_permissions(self, obj):
+        permissions = obj.get_role_permissions()
+        return [p.codename for p in permissions]
+    
+    def validate_role(self, value):
+        request = self.context.get('request')
+        if request and request.user:
+            if not request.user.is_superuser and request.user.role != 'admin':
+                raise serializers.ValidationError("只有管理员可以修改用户角色")
+        return value
 
 # 用于注册用户
-class UserCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['username', 'password', 'email', 'employee_id', 'role']
-        extra_kwargs = {'password': {'write_only': True}}
-
+class UserCreateSerializer(UserSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+    
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ['password']
+    
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
+        password = validated_data.pop('password')
+        user = User.objects.create(**validated_data)
+        user.set_password(password)
+        user.save()
         return user
 
 # 用于登录
@@ -29,8 +55,8 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField()
 
     def validate(self, data):
-        user = User.objects.filter(username=data['username']).first()
-        if user and user.check_password(data['password']):
+        user = authenticate(username=data['username'], password=data['password'])
+        if user:
             data['user'] = user
             return data
         raise serializers.ValidationError("用户名或密码错误")

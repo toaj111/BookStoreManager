@@ -1,33 +1,39 @@
-import React, { useState } from 'react';
-import { Layout, Menu, theme } from 'antd';
+import React from 'react';
+import { Layout, Menu, Avatar, Dropdown, Space } from 'antd';
+import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
     BookOutlined,
     ShoppingCartOutlined,
     ShoppingOutlined,
-    DollarOutlined,
+    AccountBookOutlined,
+    UserOutlined,
     LogoutOutlined,
 } from '@ant-design/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { authService } from '../services/authService';
+import { useAuth } from '../contexts/AuthContext';
 
 const { Header, Content, Sider } = Layout;
 
 const MainLayout = ({ children }) => {
-    const [collapsed, setCollapsed] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    const {
-        token: { colorBgContainer, borderRadiusLG },
-    } = theme.useToken();
+    const { user, logout, hasPermission } = useAuth();
 
-    const handleMenuClick = (key) => {
-        if (key === 'logout') {
-            authService.logout();
-            navigate('/login');
-        } else {
-            navigate(key);
-        }
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
     };
+
+    const userMenu = (
+        <Menu>
+            <Menu.Item key="profile" icon={<UserOutlined />}>
+                <Link to="/profile">个人信息</Link>
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
+                退出登录
+            </Menu.Item>
+        </Menu>
+    );
 
     const menuItems = [
         {
@@ -43,67 +49,46 @@ const MainLayout = ({ children }) => {
         {
             key: '/purchases',
             icon: <ShoppingOutlined />,
-            label: '进货管理',
+            label: '采购管理',
         },
         {
-            key: '/financial',
-            icon: <DollarOutlined />,
+            key: '/financials',
+            icon: <AccountBookOutlined />,
             label: '财务管理',
-        },
-        {
-            key: 'logout',
-            icon: <LogoutOutlined />,
-            label: '退出登录',
         },
     ];
 
+    if (hasPermission('manage_users')) {
+        menuItems.push({
+            key: '/users',
+            icon: <UserOutlined />,
+            label: '用户管理',
+        });
+    }
+
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Header style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                background: colorBgContainer,
-                padding: '0 24px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-                <div style={{ 
-                    fontSize: '20px', 
-                    fontWeight: 'bold',
-                    color: '#1890ff'
-                }}>
-                    书店管理系统
-                </div>
+            <Header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ color: 'white', fontSize: '20px' }}>书店管理系统</div>
+                <Dropdown overlay={userMenu} placement="bottomRight">
+                    <Space style={{ cursor: 'pointer', color: 'white' }}>
+                        <Avatar icon={<UserOutlined />} />
+                        <span>{user?.username}</span>
+                    </Space>
+                </Dropdown>
             </Header>
             <Layout>
-                <Sider 
-                    width={200} 
-                    collapsible 
-                    collapsed={collapsed}
-                    onCollapse={setCollapsed}
-                    style={{ 
-                        background: colorBgContainer,
-                        borderRight: '1px solid #f0f0f0'
-                    }}
-                >
+                <Sider width={200} theme="light">
                     <Menu
                         mode="inline"
                         selectedKeys={[location.pathname]}
-                        style={{ height: '100%', borderRight: 0 }}
                         items={menuItems}
-                        onClick={({ key }) => handleMenuClick(key)}
+                        onClick={({ key }) => navigate(key)}
                     />
                 </Sider>
                 <Layout style={{ padding: '24px' }}>
-                    <Content
-                        style={{
-                            padding: 24,
-                            margin: 0,
-                            minHeight: 280,
-                            background: colorBgContainer,
-                            borderRadius: borderRadiusLG,
-                        }}
-                    >
-                        {children}
+                    <Content>
+                        <Outlet />
                     </Content>
                 </Layout>
             </Layout>

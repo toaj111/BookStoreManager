@@ -2,47 +2,31 @@ import React, { useEffect } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   useEffect(() => {
-    // 如果已经登录，直接跳转到仪表盘
+    // 如果已经登录，直接跳转到首页
     const token = localStorage.getItem('token');
     if (token) {
-      navigate('/dashboard');
+      navigate('/');
     }
   }, [navigate]);
 
   const onFinish = async (values) => {
     try {
-      // 临时模拟登录成功
-      if (values.username === 'admin' && values.password === 'admin123') {
-        localStorage.setItem('token', 'dummy-token');
-        localStorage.setItem('user', JSON.stringify({
-          username: 'admin',
-          role: 'super_admin'
-        }));
+      const success = await login(values.username, values.password);
+      if (success) {
         message.success('登录成功！');
-        navigate('/dashboard');
-        return;
-      }
-
-      const response = await axios.post('http://localhost:8000/api/login/', {
-        username: values.username,
-        password: values.password,
-      });
-
-      if (response.data.token) {
-        // 保存token到localStorage
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        message.success('登录成功！');
-        navigate('/dashboard');
+        navigate('/');
+      } else {
+        message.error('登录失败：用户名或密码错误');
       }
     } catch (error) {
-      message.error('登录失败：用户名或密码错误');
+      message.error('登录失败：' + (error.response?.data?.message || error.message));
     }
   };
 

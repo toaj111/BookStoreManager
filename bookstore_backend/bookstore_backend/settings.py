@@ -41,7 +41,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'api',
+    'accounts',
+    'books',
+    'sales',
+    'purchases',
+    'financials',
 ]
 
 MIDDLEWARE = [
@@ -117,12 +121,8 @@ WSGI_APPLICATION = 'bookstore_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'bookstore',
-        'USER': 'bookstore_user',
-        'PASSWORD': 'bookstore_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -197,9 +197,8 @@ SIMPLE_JWT = {
 }
 
 # Custom user model
-AUTH_USER_MODEL = 'api.User'
+AUTH_USER_MODEL = 'accounts.User'
 
 AUTHENTICATION_BACKENDS = [
-    'api.auth.MD5Backend',
     'django.contrib.auth.backends.ModelBackend',
 ]

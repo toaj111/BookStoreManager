@@ -12,23 +12,44 @@ from .serializers import (
     BookSerializer, PurchaseOrderSerializer,
     SaleSerializer, FinancialTransactionSerializer
 )
+from django.contrib.auth.models import Permission
+from .permissions import IsAdminUser, IsManagerOrAdmin, IsStaffOrManagerOrAdmin
 
 # Create your views here.
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return UserCreateSerializer
-        return UserSerializer
-
+    
     def get_permissions(self):
-        if self.action in ['login', 'create']:
-            return [permissions.AllowAny()]
-        return super().get_permissions()
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAdminUser]
+        else:
+            permission_classes = [IsStaffOrManagerOrAdmin]
+        return [permission() for permission in permission_classes]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.role == 'admin':
+            return User.objects.all()
+        elif user.role == 'manager':
+            return User.objects.filter(role__in=['manager', 'staff'])
+        else:
+            return User.objects.filter(id=user.id)
+    
+    @action(detail=False, methods=['get'])
+    def permissions(self, request):
+        user = request.user
+        permissions = user.get_role_permissions()
+        return Response({
+            'permissions': [p.codename for p in permissions]
+        })
+    
+    @action(detail=False, methods=['get'])
+    def roles(self, request):
+        return Response({
+            'roles': dict(User.ROLE_CHOICES)
+        })
 
     # 自定义api路由
 
@@ -66,13 +87,15 @@ class UserViewSet(viewsets.ModelViewSet):
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-    permission_classes = [IsAuthenticated]
-
+    permission_classes = [IsStaffOrManagerOrAdmin]  # 使用自定义权限类
+    
     def get_queryset(self):
         return Book.objects.all()
 
     @action(detail=True, methods=['post'])
     def update_stock(self, request, pk=None):
+        if not (request.user.is_superuser or request.user.role in ['admin', 'manager']):
+            return Response({'error': '没有权限'}, status=status.HTTP_403_FORBIDDEN)
         book = self.get_object()
         quantity = request.data.get('quantity', 0)
         book.stock_quantity += int(quantity)
@@ -82,7 +105,13 @@ class BookViewSet(viewsets.ModelViewSet):
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all()
     serializer_class = PurchaseOrderSerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsManagerOrAdmin]
+        else:
+            permission_classes = [IsStaffOrManagerOrAdmin]
+        return [permission() for permission in permission_classes]
 
     @action(detail=True, methods=['post'])
     def pay(self, request, pk=None):
@@ -113,7 +142,13 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 class SaleViewSet(viewsets.ModelViewSet):
     queryset = Sale.objects.all()
     serializer_class = SaleSerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsManagerOrAdmin]
+        else:
+            permission_classes = [IsStaffOrManagerOrAdmin]
+        return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
         sale = serializer.save()
@@ -160,7 +195,13 @@ class SaleViewSet(viewsets.ModelViewSet):
 class FinancialTransactionViewSet(viewsets.ModelViewSet):
     queryset = FinancialTransaction.objects.all()
     serializer_class = FinancialTransactionSerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsManagerOrAdmin]
+        else:
+            permission_classes = [IsStaffOrManagerOrAdmin]
+        return [permission() for permission in permission_classes]
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
