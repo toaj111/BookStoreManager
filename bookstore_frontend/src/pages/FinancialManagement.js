@@ -119,13 +119,13 @@ const FinancialManagement = () => {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
           <Title level={4}>财务管理</Title>
-          <Button
+          {/* <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={handleAdd}
           >
             添加财务记录
-          </Button>
+          </Button> */}
         </div>
 
         <Table
