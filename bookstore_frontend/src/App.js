@@ -12,7 +12,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import PurchaseManagement from './pages/PurchaseManagement';
-import SaleManagement from './pages/SaleManagement';
+import SalesManagement from './pages/SalesManagement';
 import FinancialManagement from './pages/FinancialManagement';
 import Navbar from './components/Navbar';
 import './App.css';
@@ -73,7 +73,7 @@ const AppContent = () => {
                         path="/sales"
                         element={
                             <PrivateRoute>
-                                <SaleManagement />
+                                <SalesManagement />
                             </PrivateRoute>
                         }
                     />

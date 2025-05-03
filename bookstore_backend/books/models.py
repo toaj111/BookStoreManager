@@ -73,3 +73,29 @@ class PurchaseOrder(models.Model):
 
     def __str__(self):
         return f"{self.book.title} - {self.quantity}本"
+    
+
+class Sale(models.Model):
+    STATUS_CHOICES = (
+        ('completed', '已完成'),
+        ('returned', '已退货'),
+    )
+
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, verbose_name='图书', related_name='book_sales')
+    quantity = models.IntegerField(verbose_name='数量')
+    sale_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='销售价格')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='completed', verbose_name='状态')
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, verbose_name='创建人', related_name='created_sales')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        verbose_name = '销售记录'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.book.title} - {self.quantity}本"
+
+    @property
+    def total_amount(self):
+        return self.quantity * self.sale_price

@@ -158,26 +158,34 @@ const PurchaseManagement = () => {
 
   // 上架功能
   const handleShelve = async () => {
-    if (!retailPrice || retailPrice <= 0) {
+    // 如果是新书（库存为0），则必须输入零售价格
+    if (selectedOrder.book_stock === 0 && (!retailPrice || retailPrice <= 0)) {
       message.error('请输入有效的零售价格');
       return;
     }
     try {
-      await axios.post(`${API_BASE_URL}/books/purchase-orders/${selectedOrder.id}/shelve/`, {
-        retail_price: retailPrice
-      }, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      const response = await axios.post(
+        `${API_BASE_URL}/books/purchase-orders/${selectedOrder.id}/shelve/`,
+        {
+          retail_price: selectedOrder.book_stock === 0 ? retailPrice : undefined
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         }
-      });
-      message.success('上架成功');
-      setShelveModalVisible(false);
-      setRetailPrice(null);
-      setSelectedOrder(null);
-      fetchOrders();
+      );
+      
+      if (response.data) {
+        message.success('上架成功');
+        setShelveModalVisible(false);
+        setRetailPrice(null);
+        setSelectedOrder(null);
+        fetchOrders();
+      }
     } catch (error) {
-      message.error(error.response?.data?.error || '上架失败');
       console.error('Error shelving order:', error);
+      message.error(error.response?.data?.error || '上架失败');
     }
   };
 
@@ -401,18 +409,27 @@ const PurchaseManagement = () => {
               <p>图书：{selectedOrder.book_title}</p>
               <p>ISBN：{selectedOrder.book_isbn}</p>
               <p>进货数量：{selectedOrder.quantity}</p>
-              <div style={{ marginTop: 16 }}>
-                <label>零售价格：</label>
-                <InputNumber
-                  min={0.01}
-                  step={0.01}
-                  precision={2}
-                  value={retailPrice}
-                  onChange={setRetailPrice}
-                  style={{ width: 200 }}
-                  prefix="¥"
-                />
-              </div>
+              {selectedOrder.book_stock === 0 ? (
+                <div style={{ marginTop: 16 }}>
+                  <label>零售价格：</label>
+                  <InputNumber
+                    min={0.01}
+                    step={0.01}
+                    precision={2}
+                    value={retailPrice}
+                    onChange={setRetailPrice}
+                    style={{ width: 200 }}
+                    prefix="¥"
+                  />
+                  <div style={{ marginTop: 8, color: '#666' }}>
+                    （新书首次上架，需要设置零售价格）
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 16, color: '#666' }}>
+                  该书已有库存，将直接增加库存数量。
+                </div>
+              )}
             </div>
           )}
         </Modal>

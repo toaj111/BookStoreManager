@@ -2,10 +2,11 @@ from django.shortcuts import render
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Book, Category, PurchaseOrder
+from .models import Book, Category, PurchaseOrder, Sale
 from .serializers import (
     BookSerializer, CategorySerializer,
-    PurchaseOrderSerializer, NewBookPurchaseOrderSerializer
+    PurchaseOrderSerializer, NewBookPurchaseOrderSerializer,
+    SaleSerializer
 )
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdminOrReadOnly
@@ -170,20 +171,22 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        retail_price = request.data.get('retail_price')
-        try:
-            retail_price = Decimal(retail_price)
-            if retail_price <= 0:
-                raise ValueError
-        except (TypeError, ValueError):
-            return Response(
-                {'error': '零售价格必须为正数'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         book = order.book
+        # 如果图书库存为0，说明是新书，需要设置零售价格
+        if book.stock == 0:
+            retail_price = request.data.get('retail_price')
+            try:
+                retail_price = Decimal(retail_price)
+                if retail_price <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                return Response(
+                    {'error': '零售价格必须为正数'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            book.price = retail_price
+
         book.stock += order.quantity
-        book.price = retail_price
         book.status = 'in_stock'
         book.save()
 
@@ -230,3 +233,99 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             PurchaseOrderSerializer(order).data,
             status=status.HTTP_201_CREATED
         )
+
+class SaleViewSet(viewsets.ModelViewSet):
+    queryset = Sale.objects.all()
+    serializer_class = SaleSerializer
+    permission_classes = [IsStaffOrManagerOrAdmin]
+
+    def get_queryset(self):
+        queryset = Sale.objects.all()
+        search = self.request.query_params.get('search', None)
+
+        if search:
+            queryset = queryset.filter(
+                Q(book__title__icontains=search) |
+                Q(book__author__icontains=search) |
+                Q(book__publisher__icontains=search) |
+                Q(book__isbn__icontains=search)
+            )
+        return queryset.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def create_batch(self, request):
+        items = request.data.get('items', [])
+        if not items:
+            return Response(
+                {'error': '销售项目不能为空'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        sales = []
+        for item in items:
+            try:
+                book = Book.objects.get(id=item['book_id'])
+                if book.status != 'in_stock':
+                    return Response(
+                        {'error': f'图书 {book.title} 不在销售状态'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if book.stock < item['quantity']:
+                    return Response(
+                        {'error': f'图书 {book.title} 库存不足'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # 创建销售记录，使用图书的零售价
+                sale = Sale.objects.create(
+                    book=book,
+                    quantity=item['quantity'],
+                    sale_price=book.price,  # 使用图书的零售价
+                    created_by=request.user
+                )
+                sales.append(sale)
+
+                # 更新库存
+                book.stock -= item['quantity']
+                if book.stock == 0:
+                    book.status = 'out_of_stock'
+                book.save()
+
+            except Book.DoesNotExist:
+                return Response(
+                    {'error': f'图书ID {item["book_id"]} 不存在'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return Response(
+            SaleSerializer(sales, many=True).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=['post'])
+    def return_sale(self, request, pk=None):
+        sale = self.get_object()
+        if sale.status != 'completed':
+            return Response(
+                {'error': '只有已完成的销售才能退货'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 更新销售状态
+        sale.status = 'returned'
+        sale.save()
+
+        # 恢复库存
+        book = sale.book
+        book.stock += sale.quantity
+        if book.stock > 0:
+            book.status = 'in_stock'
+        book.save()
+
+        return Response({
+            'message': '退货成功',
+            'sale': SaleSerializer(sale).data
+        })

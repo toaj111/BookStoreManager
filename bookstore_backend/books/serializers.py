@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Book, Category, PurchaseOrder
+from .models import Book, Category, PurchaseOrder, Sale
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,15 +40,16 @@ class BookSerializer(serializers.ModelSerializer):
 class PurchaseOrderSerializer(serializers.ModelSerializer):
     book_title = serializers.CharField(source='book.title', read_only=True)
     book_isbn = serializers.CharField(source='book.isbn', read_only=True)
+    book_stock = serializers.IntegerField(source='book.stock', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
 
     class Meta:
         model = PurchaseOrder
         fields = [
-            'id', 'book', 'book_title', 'book_isbn', 'purchase_price', 'quantity',
-            'status', 'status_display', 'created_by', 'created_by_name',
-            'created_at', 'updated_at'
+            'id', 'book', 'book_title', 'book_isbn', 'book_stock',
+            'purchase_price', 'quantity', 'status', 'status_display',
+            'created_by', 'created_by_name', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_by', 'created_at', 'updated_at']
 
@@ -78,3 +79,19 @@ class NewBookPurchaseOrderSerializer(serializers.Serializer):
         if Book.objects.filter(isbn=value).exists():
             raise serializers.ValidationError("该ISBN的图书已存在，请直接使用图书ID创建进货订单")
         return value 
+    
+
+class SaleSerializer(serializers.ModelSerializer):
+    book_title = serializers.CharField(source='book.title', read_only=True)
+    book_isbn = serializers.CharField(source='book.isbn', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = Sale
+        fields = [
+            'id', 'book', 'book_title', 'book_isbn',
+            'quantity', 'sale_price', 'status', 'status_display',
+            'created_by', 'created_by_name', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_by', 'created_at', 'updated_at']

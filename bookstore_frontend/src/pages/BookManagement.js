@@ -12,6 +12,7 @@ import {
 } from 'antd';
 import { SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -31,39 +32,42 @@ const BookManagement = () => {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
-
-  useEffect(() => {
     fetchBooks();
   }, [searchText, categoryFilter, statusFilter]);
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('/api/books/categories/');
-      setCategories(response.data.results);
+      const response = await axios.get(`${API_BASE_URL}/books/categories/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
   };
 
-  const fetchBooks = async (page = 1, pageSize = 10) => {
+  const fetchBooks = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: page,
-        page_size: pageSize,
-      });
+      let url = `${API_BASE_URL}/books/books/`;
+      const params = new URLSearchParams();
+      
       if (searchText) params.append('search', searchText);
       if (categoryFilter) params.append('category', categoryFilter);
       if (statusFilter) params.append('status', statusFilter);
 
-      const response = await axios.get(`/api/books/books/?${params}`);
-      setBooks(response.data.results);
-      setPagination({
-        current: page,
-        pageSize: pageSize,
-        total: response.data.count,
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
+      setBooks(response.data);
     } catch (error) {
       console.error('Error fetching books:', error);
     } finally {
@@ -109,7 +113,11 @@ const BookManagement = () => {
       title: '价格',
       dataIndex: 'price',
       key: 'price',
-      render: (price) => `¥${price.toFixed(2)}`,
+      render: (price) => {
+        if (price === null || price === undefined) return '-';
+        const numPrice = Number(price);
+        return isNaN(numPrice) ? '-' : `¥${numPrice.toFixed(2)}`;
+      },
     },
     {
       title: '库存',
