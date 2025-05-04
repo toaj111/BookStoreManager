@@ -16,6 +16,7 @@ import SalesManagement from './pages/SalesManagement';
 import FinancialManagement from './pages/FinancialManagement';
 import Navbar from './components/Navbar';
 import './App.css';
+import { DollarOutlined } from '@ant-design/icons';
 
 const { Content } = Layout;
 

@@ -8,6 +8,7 @@ from .serializers import (
     PurchaseOrderSerializer, NewBookPurchaseOrderSerializer,
     SaleSerializer
 )
+from financials.models import Financial
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdminOrReadOnly
 from django.db import models
@@ -139,6 +140,15 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         if book.stock > 0:
             book.status = 'in_stock'
         book.save()
+        
+        total_amount = order.purchase_price * order.quantity
+        Financial.objects.create(
+            type='expense',
+            category='purchase',
+            amount=total_amount,
+            description=f'进货图书 《{order.book.title}》 {order.quantity} 本',
+            operator=self.request.user
+        )
 
         return Response({
             'message': '付款成功',
@@ -265,6 +275,7 @@ class SaleViewSet(viewsets.ModelViewSet):
             )
 
         sales = []
+        total_amount = 0
         for item in items:
             try:
                 book = Book.objects.get(id=item['book_id'])
@@ -287,6 +298,7 @@ class SaleViewSet(viewsets.ModelViewSet):
                     created_by=request.user
                 )
                 sales.append(sale)
+                total_amount += book.price * item['quantity']
 
                 # 更新库存
                 book.stock -= item['quantity']
@@ -299,6 +311,15 @@ class SaleViewSet(viewsets.ModelViewSet):
                     {'error': f'图书ID {item["book_id"]} 不存在'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        
+        # 创建销售记录
+        Financial.objects.create(
+            type='income',
+            category='sale',
+            amount=total_amount,
+            description=f'销售图书 {len(sales)} 本',
+            operator=request.user
+        )
 
         return Response(
             SaleSerializer(sales, many=True).data,
