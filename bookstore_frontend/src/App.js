@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';
 import PurchaseManagement from './pages/PurchaseManagement';
 import SalesManagement from './pages/SalesManagement';
 import FinancialManagement from './pages/FinancialManagement';
+import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import './App.css';
 import { DollarOutlined } from '@ant-design/icons';
@@ -83,6 +84,14 @@ const AppContent = () => {
                         element={
                             <PrivateRoute>
                                 <FinancialManagement />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <PrivateRoute>
+                                <Profile />
                             </PrivateRoute>
                         }
                     />

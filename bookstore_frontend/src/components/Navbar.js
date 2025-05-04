@@ -66,7 +66,12 @@ const Navbar = () => {
       key: '/financials',
       icon: <BarChartOutlined />,
       label: <Link to="/financials">财务管理</Link>
-    }
+    },
+    {
+      key: '/profile',
+      icon: <UserOutlined />,
+      label: <Link to="/profile">个人中心</Link>
+    },
   ];
 
   // 只有管理员可以看到用户管理菜单

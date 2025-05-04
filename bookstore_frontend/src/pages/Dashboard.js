@@ -57,7 +57,7 @@ const Dashboard = () => {
         <Col span={8}>
           <Card>
             <Statistic
-              title="总订单数"
+              title="交易笔数"
               value={statistics.total_orders}
               prefix={<ShoppingCartOutlined />}
             />
@@ -66,7 +66,7 @@ const Dashboard = () => {
         <Col span={8}>
           <Card>
             <Statistic
-              title="总销售额"
+              title="净余额"
               value={statistics.net_balance}
               prefix={<DollarOutlined />}
               precision={2}

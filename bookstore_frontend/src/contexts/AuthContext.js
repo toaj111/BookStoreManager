@@ -72,8 +72,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     const isAdmin = () => {
-        return user?.is_superuser || user?.is_staff || false;
+        return user?.is_superuser || false;
     };
+
+    
 
     const isStaff = () => {
         return user?.is_staff || false;
