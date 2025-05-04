@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Table,
   Input,
+  InputNumber,
   Button,
   Space,
   Tag,
@@ -13,9 +14,12 @@ import {
 import { SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { EditOutlined } from '@ant-design/icons';
+import { Modal, Form } from 'antd';
 
 const { Title } = Typography;
 const { Option } = Select;
+
 
 const BookManagement = () => {
   const [books, setBooks] = useState([]);
@@ -29,6 +33,9 @@ const BookManagement = () => {
     pageSize: 10,
     total: 0,
   });
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingBook, setEditingBook] = useState(null);
+  const [editForm] = Form.useForm();
 
   useEffect(() => {
     fetchCategories();
@@ -89,6 +96,41 @@ const BookManagement = () => {
     return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
   };
 
+  const handleEdit = (record) => {
+    setEditingBook(record);
+    setEditModalVisible(true);
+    editForm.setFieldsValue({
+      isbn: record.isbn,
+      title: record.title,
+      author: record.author,
+      publisher: record.publisher,
+      price: record.price,
+    });
+  };
+  
+  const handleEditOk = async () => {
+    try {
+      const values = await editForm.validateFields();
+      await axios.put(`${API_BASE_URL}/books/books/${editingBook.id}/`, values, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      setEditModalVisible(false);
+      setEditingBook(null);
+      fetchBooks();
+    } catch (error) {
+      console.error('Error updating book:', error);
+    }
+  };
+  
+  const handleEditCancel = () => {
+    setEditModalVisible(false);
+    setEditingBook(null);
+    editForm.resetFields();
+  };
+
   const columns = [
     {
       title: '图书信息',
@@ -142,7 +184,21 @@ const BookManagement = () => {
         ) : '-'
       ),
     },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_, record) => (
+        <Button
+          icon={<EditOutlined />}
+          onClick={() => handleEdit(record)}
+        >
+          编辑
+        </Button>
+      ),
+    },
   ];
+
+  
 
   return (
     <div style={{ padding: '24px' }}>
@@ -191,6 +247,34 @@ const BookManagement = () => {
           loading={loading}
           onChange={handleTableChange}
         />
+        <Modal
+              title="编辑图书信息"
+              open={editModalVisible}
+              onOk={handleEditOk}
+              onCancel={handleEditCancel}
+              destroyOnClose
+            >
+
+              <Form form={editForm} layout="vertical">
+                <Form.Item label="ISBN" name="isbn" rules={[{ required: true, message: '请输入ISBN' }]}>
+                  <Input disabled/>
+                </Form.Item>
+                <Form.Item label="书籍名称" name="title" rules={[{ required: true, message: '请输入书籍名称' }]}>
+                  <Input />
+                </Form.Item>
+                <Form.Item label="作者" name="author" rules={[{ required: true, message: '请输入作者' }]}>
+                  <Input />
+                </Form.Item>
+                <Form.Item label="出版社" name="publisher" rules={[{ required: true, message: '请输入出版社' }]}>
+                  <Input />
+                </Form.Item>
+                <Form.Item label="零售价格" name="price" rules={[
+                  { required: true, message: '请输入零售价格' }
+                ]}>
+                  <InputNumber min={0.01} style={{ width: '100%' }} prefix="¥" />
+                </Form.Item>
+              </Form>
+        </Modal>
       </Card>
     </div>
   );

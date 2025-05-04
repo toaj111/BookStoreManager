@@ -6,48 +6,27 @@
 ## 技术栈
 - 前端：React.js
 - 后端：Django + Django REST Framework
-- 数据库：PostgreSQL
+- 数据库：SQLite
 - 认证：JWT (JSON Web Tokens)
 
 ## 项目结构
 ```
 BookStoreManager/
 ├── bookstore_backend/     # Django后端
-│   ├── api/              # REST API应用
-│   │   ├── models.py     # 数据模型
-│   │   ├── views.py      # API视图
-│   │   └── urls.py       # API路由
-│   └── manage.py         # Django管理脚本
-└── bookstore_frontend/    # React前端
-    ├── public/           # 静态资源
-    └── src/             # React源码
+│   ├── accounts/         # 用户账户管理
+│   ├── books/           # 图书管理
+│   ├── sales/          # 销售管理
+│   ├── purchases/      # 进货管理
+│   ├── financials/     # 财务管理
+│   └── manage.py       # Django管理脚本
+└── bookstore_frontend/  # React前端
+    ├── public/         # 静态资源
+    └── src/           # React源码
 ```
 
 ## 环境配置步骤
 
-### 1. 安装必要的系统包
-```bash
-# 更新系统包
-sudo apt-get update
-
-# 安装PostgreSQL
-sudo apt-get install -y postgresql postgresql-contrib
-
-# 安装Python包管理器和开发工具
-sudo apt-get install -y python3-pip python3-dev
-```
-
-### 2. 配置PostgreSQL数据库
-```bash
-# 启动PostgreSQL服务
-sudo service postgresql start
-
-# 创建数据库和用户
-sudo -u postgres psql -c "CREATE USER bookstore_user WITH PASSWORD 'bookstore_password';"
-sudo -u postgres psql -c "CREATE DATABASE bookstore OWNER bookstore_user;"
-```
-
-### 3. 配置Python环境
+### 1. 配置Python环境
 ```bash
 # 安装虚拟环境工具(可选但推荐)
 pip install virtualenv
@@ -55,10 +34,10 @@ virtualenv venv
 source venv/bin/activate  # 在Windows上使用: venv\Scripts\activate
 
 # 安装Python依赖
-pip install django djangorestframework psycopg2-binary djangorestframework-simplejwt
+pip install django djangorestframework djangorestframework-simplejwt django-cors-headers
 ```
 
-### 4. 配置后端
+### 2. 配置后端
 ```bash
 cd bookstore_backend
 
@@ -72,7 +51,7 @@ python manage.py shell
 
 在Python shell中执行:
 ```python
-from api.models import User
+from accounts.models import User
 User.objects.create_superuser(
     username='admin',
     email='admin@example.com',
@@ -83,14 +62,8 @@ User.objects.create_superuser(
 exit()
 ```
 
-### 5. 配置前端
-    ```bash
-# 安装Node.js (如果还没安装)
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-source ~/.bashrc  # 或 ~/.zshrc
-nvm install node  # 安装最新版Node.js
-
-# 安装前端依赖
+### 3. 配置前端
+```bash
 cd bookstore_frontend
 npm install
 ```
@@ -105,7 +78,7 @@ python manage.py runserver
 后端服务器将在 http://localhost:8000 运行
 
 ### 启动前端开发服务器
-    ```bash
+```bash
 cd bookstore_frontend
 npm start
 ```
@@ -121,7 +94,7 @@ npm start
 ### 1. 用户管理
 - 超级管理员和普通管理员两种角色
 - 用户信息管理
-- MD5密码加密存储
+- JWT认证
 
 ### 2. 图书库存管理
 - 图书信息维护(ISBN、书名、作者、出版社等)
@@ -143,28 +116,32 @@ npm start
 - 财务报表
 - 账单查询
 
+### 6. 图书管理
+图书管理模块允许用户添加、编辑和删除图书信息。用户可以查看图书列表，并通过表单添加新图书或编辑现有图书信息。
+
+#### 功能
+- **查看图书列表**：显示所有图书的详细信息，包括书名、作者、出版社、ISBN、价格和库存。
+- **添加图书**：通过表单添加新图书信息。
+- **编辑图书**：修改现有图书的信息。
+- **删除图书**：从系统中删除图书信息。
+
 ## 开发注意事项
-1. 请确保PostgreSQL服务已启动
-2. 所有密码都会自动使用MD5加密存储
-3. API访问需要JWT认证
-4. 请根据实际情况修改数据库连接配置(settings.py中的DATABASE配置)
+1. API访问需要JWT认证
+2. 前端API请求已配置CORS，支持跨域访问
+3. 使用SQLite数据库，无需额外配置
 
 ## 数据库配置说明
 数据库配置在 `bookstore_backend/bookstore_backend/settings.py` 中：
 ```python
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'bookstore',
-        'USER': 'bookstore_user',
-        'PASSWORD': 'bookstore_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 ```
 
 ## 常见问题解决
-1. 如果遇到数据库连接问题，请检查PostgreSQL服务是否正常运行
-2. 如果遇到权限问题，请检查数据库用户权限设置
-3. 前端API请求跨域问题已通过CORS设置解决
+1. 如果遇到跨域问题，检查CORS配置是否正确
+2. 如果遇到认证问题，检查JWT token是否正确
+3. 如果遇到数据库问题，确保已执行数据库迁移
