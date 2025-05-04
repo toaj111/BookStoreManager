@@ -6,6 +6,7 @@ from django.db.models import Sum, Count
 from django.contrib.contenttypes.models import ContentType
 from .models import Financial
 from .serializers import FinancialSerializer
+from books.models import Book
 import logging
 
 logger = logging.getLogger(__name__)
@@ -55,11 +56,17 @@ class FinancialViewSet(viewsets.ModelViewSet):
         # 计算交易笔数
         transaction_count = Financial.objects.count()
 
+        # 计算总图书数
+        total_books = Book.objects.aggregate(
+            total=Sum('stock')
+        )['total'] or 0
+
         data = {
             'total_income': total_income,
             'total_expense': total_expense,
             'net_balance': net_balance,
-            'transaction_count': transaction_count
+            'transaction_count': transaction_count,
+            'total_books': total_books
         }
         logger.info(f'Summary data: {data}')
         return Response(data)

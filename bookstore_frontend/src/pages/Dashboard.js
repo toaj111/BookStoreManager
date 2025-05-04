@@ -26,13 +26,15 @@ const Dashboard = () => {
         }
       });
       console.log('Summary response:', response.data);
-      const updateNetBalance = () => {
+      const updateFinancialSummary = () => {
         setStatistics(prevState => ({
           ...prevState,
-          net_balance: response.data.net_balance
+          net_balance: response.data.net_balance,
+          total_orders: response.data.transaction_count,
+          total_books: response.data.total_books
           }));
       };
-      updateNetBalance();
+      updateFinancialSummary();
     } catch (error) {
       console.error('Error fetching summary:', error);
       if (error.response) {
@@ -43,25 +45,25 @@ const Dashboard = () => {
   return (
     <div style={{ padding: '24px' }}>
       <Row gutter={[16, 16]}>
-        <Col span={6}>
+        <Col span={8}>
           <Card>
             <Statistic
               title="总图书数"
-              value={0}
+              value={statistics.total_books}
               prefix={<BookOutlined />}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Card>
             <Statistic
               title="总订单数"
-              value={0}
+              value={statistics.total_orders}
               prefix={<ShoppingCartOutlined />}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Card>
             <Statistic
               title="总销售额"
@@ -73,7 +75,7 @@ const Dashboard = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        {/* <Col span={6}>
           <Card>
             <Statistic
               title="总用户数"
@@ -81,10 +83,10 @@ const Dashboard = () => {
               prefix={<UserOutlined />}
             />
           </Card>
-        </Col>
+        </Col> */}
       </Row>
 
-      <Row gutter={16} style={{ marginTop: '24px' }}>
+      {/* <Row gutter={16} style={{ marginTop: '24px' }}>
         <Col span={12}>
           <Card title="最近销售">
             <p>暂无数据</p>
@@ -95,7 +97,7 @@ const Dashboard = () => {
             <p>暂无数据</p>
           </Card>
         </Col>
-      </Row>
+      </Row> */}
     </div>
   );
 };
